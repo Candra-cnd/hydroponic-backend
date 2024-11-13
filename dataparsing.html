@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Hidroponik</title>
+    <style>
+        /* Warna untuk indikator suhu */
+        .high-temp { color: red; font-weight: bold; }
+        .medium-temp { color: orange; font-weight: bold; }
+        .low-temp { color: green; font-weight: bold; }
+
+        /* Gaya umum */
+        #dataTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #dataTable, #dataTable th, #dataTable td {
+            border: 1px solid #ddd;
+        }
+        #dataTable th, #dataTable td {
+            padding: 12px;
+            text-align: center;
+        }
+        #dataTable th {
+            background-color: #f2f2f2;
+        }
+        
+        #statusDisplay {
+            font-size: 1.1em;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        /* Icon untuk notifikasi */
+        .icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+        .icon.temp { background-color: #ffeb3b; }
+        .icon.pH { background-color: #4caf50; }
+        .icon.pump { background-color: #03a9f4; }
+    </style>
+</head>
+<body>
+    <h1>Data Hidroponik</h1>
+    
+    <!-- Tabel untuk menampilkan data sensor -->
+    <table id="dataTable">
+        <tr>
+            <th>Parameter</th>
+            <th>Nilai</th>
+        </tr>
+        <tr>
+            <td><span class="icon temp"></span>Suhu</td>
+            <td id="tempDisplay"></td>
+        </tr>
+        <tr>
+            <td><span class="icon"></span>Kelembapan</td>
+            <td id="humidityDisplay"></td>
+        </tr>
+        <tr>
+            <td><span class="icon pH"></span>pH</td>
+            <td id="phDisplay"></td>
+        </tr>
+        <tr>
+            <td><span class="icon"></span>Kekeruhan</td>
+            <td id="turbidityDisplay"></td>
+        </tr>
+        <tr>
+            <td><span class="icon pump"></span>Status Pompa</td>
+            <td id="pumpStatus"></td>
+        </tr>
+    </table>
+    
+    <!-- Status sistem dan waktu pembaruan -->
+    <div id="statusDisplay"></div>
+
+    <script>
+        function getTemperatureClass(temp) {
+            if (temp > 35) return 'high-temp';
+            else if (temp >= 30) return 'medium-temp';
+            else return 'low-temp';
+        }
+
+        function updateData() {
+            fetch('http://localhost:3000/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    // Display main sensor data
+                    document.getElementById('tempDisplay').innerHTML = `<span class="${getTemperatureClass(data.suhu)}">${data.suhu}°C</span>`;
+                    document.getElementById('humidityDisplay').textContent = `${data.kelembapan}%`;
+                    document.getElementById('phDisplay').textContent = data.ph;
+                    document.getElementById('turbidityDisplay').textContent = data.kekeruhan;
+                    document.getElementById('pumpStatus').textContent = data.pompa ? 'Hidup' : 'Mati';
+
+                    // Display status update time and system status
+                    const currentTime = new Date().toLocaleTimeString();
+                    let systemStatus = "Normal";
+                    if (data.suhu > 35) systemStatus = "Peringatan: Suhu terlalu tinggi!";
+                    else if (data.suhu < 20) systemStatus = "Peringatan: Suhu terlalu rendah!";
+                    if (data.ph < 5.5 || data.ph > 7.5) systemStatus += " pH tidak stabil!";
+                    
+                    document.getElementById('statusDisplay').innerHTML = `
+                        <p><strong>Waktu Pembaruan:</strong> ${currentTime}</p>
+                        <p><strong>Status Sistem:</strong> ${systemStatus}</p>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('statusDisplay').innerHTML = `
+                        <p>Gagal memperbarui data. Cek koneksi ke server.</p>
+                    `;
+                });
+        }
+
+        // Panggil fungsi untuk pembaruan otomatis setiap 10 detik
+        setInterval(updateData, 10000);
+        updateData();
+    </script>
+</body>
+</html>
